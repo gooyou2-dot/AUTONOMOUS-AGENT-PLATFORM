@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Autonomous Agent Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 900px;
+        }
+        .lead-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease-in-out;
+        }
+        .lead-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+        }
+        .loader {
+            border-top-color: #3b82f6;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+        @-webkit-keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .copy-button.active {
+            background-color: #10b981;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 p-4 sm:p-8">
+    <!-- Main Container -->
+    <div class="container mx-auto">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 mb-2">The Autonomous Agent Platform</h1>
+            <p class="text-lg text-gray-600">Your personal AI-powered lead generation and client engagement tool.</p>
+        </header>
+
+        <!-- User ID Display -->
+        <div class="bg-blue-500 text-white p-4 rounded-lg shadow-md mb-8 text-center">
+            <p class="font-bold">Your Unique User ID:</p>
+            <p id="user-id-display" class="break-words"></p>
+        </div>
+
+        <!-- User Input Section -->
+        <div class="bg-white p-6 rounded-2xl shadow-md mb-8">
+            <h2 class="text-2xl font-bold mb-4 text-gray-900">Generate Leads</h2>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <input id="prompt-input" type="text" class="flex-grow p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition-colors" placeholder="e.g., 'Find commercial property and casualty leads in Dallas, TX for contractors.'">
+                <button id="generate-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">Generate Leads</button>
+            </div>
+        </div>
+
+        <!-- Loading Indicator and Status -->
+        <div id="status-area" class="text-center mb-6 hidden">
+            <div id="loader" class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mx-auto mb-4"></div>
+            <p id="status-text" class="text-gray-600"></p>
+        </div>
+
+        <!-- Lead Display Area -->
+        <div id="leads-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Leads will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <!-- The JavaScript logic is now in a separate file -->
+    <script type="module" src="./main.js"></script>
+</body>
+</html>
