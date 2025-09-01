@@ -3,7 +3,6 @@ import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/1
 import { getFirestore, addDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // Your actual Firebase configuration from Firebase Console
-// Force deployment - testing
 const firebaseConfig = {
   apiKey: "AIzaSyC8GGN2dLImqUPXIIYoYItg7WJSVIwgow",
   authDomain: "autonomous-agent-platform.firebaseapp.com",
@@ -216,5 +215,4 @@ function renderLeads(leads) {
 
         leadsContainer.appendChild(leadCard);
     });
-
 }
