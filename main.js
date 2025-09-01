@@ -1,44 +1,48 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, addDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// Use a debug log level to see detailed Firestore logs in the console
-setLogLevel('debug');
+// Your actual Firebase configuration from Firebase Console
+const firebaseConfig = {
+  apiKey: "AIzaSyAfJCGvSVOQckOWdf2IgluOGc7EXiKKEp4",
+  authDomain: "autonomous-agent-platform.firebaseapp.com",
+  projectId: "autonomous-agent-platform",
+  storageBucket: "autonomous-agent-platform.firebasestorage.app",
+  messagingSenderId: "629997046233",
+  appId: "1:629997046233:web:ab40772d6fc77adcccf1c8",
+  measurementId: "G-BGZV9Z7M70"
+};
 
-// MANDATORY: Use __app_id and __firebase_config for Firebase initialization
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+// FIXED: Use a simple app ID
+const appId = "autonomous-agent-platform";
 
 // --- Firebase Initialization and Authentication ---
 let app, auth, db, userId;
 
 const initFirebase = async () => {
-    if (Object.keys(firebaseConfig).length === 0) {
-        console.error("Firebase config is missing. The app will not function correctly.");
-        return;
-    }
     try {
+        // Initialize Firebase
         app = initializeApp(firebaseConfig);
         auth = getAuth(app);
         db = getFirestore(app);
 
-        if (initialAuthToken) {
-            await signInWithCustomToken(auth, initialAuthToken);
-        } else {
-            await signInAnonymously(auth);
-        }
-        userId = auth.currentUser?.uid || crypto.randomUUID(); // Use a random ID for anonymous users
+        // Sign in anonymously (simpler than custom tokens)
+        const userCredential = await signInAnonymously(auth);
+        userId = userCredential.user.uid;
+        
         console.log(`Successfully authenticated with user ID: ${userId}`);
         document.getElementById('user-id-display').textContent = userId;
-        setupFirestoreListener(); // Start listening for changes once authenticated
+        
+        // Start listening for changes once authenticated
+        setupFirestoreListener();
     } catch (error) {
         console.error("Firebase authentication error:", error);
+        // Show error to user
+        document.getElementById('user-id-display').textContent = "Error: Firebase not configured";
     }
 };
 
-// Call the initialization function when the script loads
+// Initialize when script loads
 initFirebase();
 
 // --- UI Elements and Event Listeners ---
@@ -53,7 +57,14 @@ generateButton.addEventListener('click', generateLeads);
 async function generateLeads() {
     const userPrompt = promptInput.value.trim();
     if (!userPrompt) {
-        console.error('Please enter a prompt to generate leads.');
+        statusText.textContent = 'Please enter a prompt to generate leads.';
+        statusArea.classList.remove('hidden');
+        return;
+    }
+
+    if (!userId) {
+        statusText.textContent = 'Error: Not authenticated. Please refresh the page.';
+        statusArea.classList.remove('hidden');
         return;
     }
 
@@ -61,95 +72,45 @@ async function generateLeads() {
     statusText.textContent = 'Triggering AI Agent Pipeline...';
     generateButton.disabled = true;
 
-    // This is the new part: The frontend now calls our new backend endpoint
-    const backendEndpointUrl = 'https://clake37.app.n8n.cloud/webhook/24f2a44f-99d8-46ea-a700-6a7e2662fe31'; 
+    // Your n8n webhook URL
+    const webhookUrl = 'https://clake37.app.n8n.cloud/webhook/24f2a44f-99d8-46ea-a700-6a7e2662fe31'; 
 
     try {
-        const response = await fetch(backendEndpointUrl, {
+        const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ prompt: userPrompt, userId: userId }),
+            body: JSON.stringify({ 
+                prompt: userPrompt, 
+                userId: userId,
+                appId: appId
+            }),
         });
 
         if (!response.ok) {
-            throw new Error(`Endpoint call failed with status: ${response.status}`);
+            throw new Error(`Webhook failed with status: ${response.status}`);
         }
 
         const result = await response.json();
-        console.log("Backend response:", result);
+        console.log("n8n webhook response:", result);
 
         statusText.textContent = 'Agent pipeline triggered. New leads will appear shortly!';
+        
+        // Clear input
+        promptInput.value = '';
+        
+        // Hide status after 3 seconds
+        setTimeout(() => {
+            statusArea.classList.add('hidden');
+        }, 3000);
+
     } catch (error) {
         statusText.textContent = 'Error: ' + error.message;
-        console.error('API call error:', error);
+        console.error('Webhook error:', error);
     } finally {
         generateButton.disabled = false;
     }
-}
-
-// --- Firestore Operations ---
-async function saveLeadsToFirestore(leads) {
-    if (!db || !userId) {
-        console.error("Firestore is not initialized.");
-        return;
-    }
-    const userLeadsCollection = collection(db, `artifacts/${appId}/users/${userId}/leads`);
-    for (const lead of leads) {
-        await addDoc(userLeadsCollection, {
-            ...lead,
-            status: 'New',
-            timestamp: serverTimestamp()
-        });
-    }
-}
-
-function renderLeads(leads) {
-    leadsContainer.innerHTML = ''; // Clear previous leads
-    leads.forEach(lead => {
-        const leadCard = document.createElement('div');
-        leadCard.className = 'lead-card p-6 fade-in';
-        leadCard.innerHTML = `
-            <h3 class="text-xl font-bold text-blue-600">${lead.name}</h3>
-            <p class="text-sm text-gray-500 mb-4">${lead.location}</p>
-            <p class="text-lg font-medium text-gray-700">${lead.subjectLine}</p>
-            <div class="bg-gray-100 p-4 rounded-lg mt-4">
-                <pre class="text-sm text-gray-800 whitespace-pre-wrap">${lead.personalizedEmail}</pre>
-            </div>
-            <div class="flex justify-end mt-4">
-                <button class="copy-button bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg transition-colors duration-200">Copy Email</button>
-            </div>
-            <div class="mt-4 border-t pt-4">
-                <h4 class="text-md font-semibold mb-2">Research Notes:</h4>
-                <p class="text-sm text-gray-600">${lead.researchNotes}</p>
-            </div>
-        `;
-        leadCard.querySelector('.copy-button').addEventListener('click', (event) => {
-            const button = event.target;
-            const content = button.closest('.lead-card').querySelector('pre').textContent;
-            
-            const tempInput = document.createElement('textarea');
-            tempInput.value = content;
-            document.body.appendChild(tempInput);
-            tempInput.select();
-            
-            try {
-                document.execCommand('copy');
-                button.textContent = 'Copied!';
-                button.classList.add('active');
-                setTimeout(() => {
-                    button.textContent = 'Copy Email';
-                    button.classList.remove('active');
-                }, 2000);
-            } catch (err) {
-                console.error('Failed to copy text: ', err);
-            }
-            document.body.removeChild(tempInput);
-        });
-
-        leadsContainer.appendChild(leadCard);
-    });
 }
 
 // --- Real-time Firestore Listener ---
@@ -158,17 +119,100 @@ const setupFirestoreListener = () => {
         console.error("Firestore not initialized. Cannot set up listener.");
         return;
     }
+    
+    // Listen to the exact path that n8n will write to
     const leadsCollection = collection(db, `artifacts/${appId}/users/${userId}/leads`);
     const q = query(leadsCollection);
 
     onSnapshot(q, (snapshot) => {
         const leads = [];
         snapshot.forEach((doc) => {
-            leads.push({ id: doc.id, ...doc.data() });
+            const data = doc.data();
+            // Handle both direct text and structured lead data
+            if (typeof data === 'string') {
+                // If n8n saves the AI response directly as text
+                leads.push({
+                    id: doc.id,
+                    content: data,
+                    timestamp: new Date()
+                });
+            } else {
+                // If n8n saves structured data
+                leads.push({ 
+                    id: doc.id, 
+                    ...data 
+                });
+            }
         });
-        renderLeads(leads);
+        
+        if (leads.length > 0) {
+            renderLeads(leads);
+            statusArea.classList.add('hidden');
+        }
     }, (error) => {
-        console.error("Firestore onSnapshot error:", error);
-        statusText.textContent = "Error loading leads.";
+        console.error("Firestore listener error:", error);
+        statusText.textContent = "Error loading leads: " + error.message;
     });
 };
+
+function renderLeads(leads) {
+    leadsContainer.innerHTML = ''; // Clear previous leads
+    
+    leads.forEach((lead, index) => {
+        const leadCard = document.createElement('div');
+        leadCard.className = 'lead-card p-6 fade-in';
+        
+        // Handle different data formats
+        let content = '';
+        if (lead.content) {
+            content = lead.content;
+        } else if (typeof lead === 'string') {
+            content = lead;
+        } else {
+            content = JSON.stringify(lead, null, 2);
+        }
+        
+        leadCard.innerHTML = `
+            <h3 class="text-xl font-bold text-blue-600">Lead #${index + 1}</h3>
+            <p class="text-sm text-gray-500 mb-4">Generated: ${new Date().toLocaleString()}</p>
+            <div class="bg-gray-100 p-4 rounded-lg">
+                <pre class="text-sm text-gray-800 whitespace-pre-wrap">${content}</pre>
+            </div>
+            <div class="flex justify-end mt-4">
+                <button class="copy-button bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg transition-colors duration-200">Copy Content</button>
+            </div>
+        `;
+        
+        // Add copy functionality
+        leadCard.querySelector('.copy-button').addEventListener('click', (event) => {
+            const button = event.target;
+            const content = button.closest('.lead-card').querySelector('pre').textContent;
+            
+            navigator.clipboard.writeText(content).then(() => {
+                button.textContent = 'Copied!';
+                button.classList.add('active');
+                setTimeout(() => {
+                    button.textContent = 'Copy Content';
+                    button.classList.remove('active');
+                }, 2000);
+            }).catch(() => {
+                // Fallback for older browsers
+                const tempInput = document.createElement('textarea');
+                tempInput.value = content;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+                
+                button.textContent = 'Copied!';
+                button.classList.add('active');
+                setTimeout(() => {
+                    button.textContent = 'Copy Content';
+                    button.classList.remove('active');
+                }, 2000);
+            });
+        });
+
+        leadsContainer.appendChild(leadCard);
+    });
+}
