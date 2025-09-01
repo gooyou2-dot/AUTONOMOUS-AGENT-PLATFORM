@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, addDoc, onSnapshot, collection, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, addDoc, onSnapshot, collection, query, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // Use a debug log level to see detailed Firestore logs in the console
@@ -53,97 +53,37 @@ generateButton.addEventListener('click', generateLeads);
 async function generateLeads() {
     const userPrompt = promptInput.value.trim();
     if (!userPrompt) {
-        // No alert, just log the error to the console
         console.error('Please enter a prompt to generate leads.');
         return;
     }
 
     statusArea.classList.remove('hidden');
-    statusText.textContent = 'Generating leads with AI agents...';
+    statusText.textContent = 'Triggering AI Agent Pipeline...';
     generateButton.disabled = true;
 
-    const systemPrompt = `
-        You are an expert AI Agent specializing in lead generation and client engagement for commercial insurance agents. Your primary task is to take a natural language prompt from a user (a human insurance agent) and, using a multi-agent framework, generate a list of high-quality, hyper-personalized leads.
+    // This is the new part: The frontend now calls our new backend endpoint
+    const backendEndpointUrl = 'https://clake37.app.n8n.cloud/webhook/24f2a44f-99d8-46ea-a700-6a7e2662fe31'; 
 
-        **Your Internal Multi-Agent Workflow:**
-        1.  **Prospecting Agent:** Based on the user's prompt, identify a hyper-specific niche (e.g., "commercial P&C leads for contractors in Dallas"). Simulate a web scrape of publicly available data (business names, locations, websites).
-        2.  **Research & Enrichment Agent:** For each identified lead, simulate a "stalker-like" research process. Use the business name and website to infer their pain points, recent news, and any other relevant details that could be used for a personalized outreach.
-        3.  **Copywriting Agent:** Based on the enriched data, write a short, hyper-personalized cold email for each lead. The email should be concise and designed to start a conversation, not sell a policy. It should demonstrate that you've done your homework.
-        4.  **Reporting Agent:** Compile all the information into a single, structured JSON format. The final output must be a JSON array of objects, with each object representing a single lead.
-
-        **Strict JSON Output Format:**
-        - The response MUST be a JSON array.
-        - Each object in the array MUST contain the following properties:
-            - \`name\`: The business name (string).
-            - \`location\`: The city and state (string).
-            - \`niche\`: The business niche (string, e.g., "contractors").
-            - \`painPoints\`: A list of inferred pain points (array of strings).
-            - \`personalizedEmail\`: The complete, personalized cold email copy (string).
-            - \`subjectLine\`: A compelling, personalized subject line for the email (string).
-            - \`researchNotes\`: A summary of your research for the human agent to review (string).
-
-        **Example Prompt to me:** 'Find commercial property and casualty leads for contractors in Dallas, TX.'
-        
-        **Example of your expected JSON output:**
-        \`\`\`json
-        [
-          {
-            "name": "Acme Construction Solutions",
-            "location": "Dallas, TX",
-            "niche": "Construction",
-            "painPoints": ["Risk management for large-scale projects", "Liability from subcontractors", "Securing job-specific bonds"],
-            "personalizedEmail": "Hi [Prospect Name], I saw that Acme Construction recently broke ground on the new 'Catalina' project in Dallas. That sounds like a significant undertaking! As you know, large-scale projects come with unique risk management challenges. I specialize in helping contractors like you secure the right P&C coverage and job-specific bonds. Would you be open to a quick chat to discuss how to best protect this new project?",
-            "subjectLine": "Quick question about the Catalina project",
-            "researchNotes": "Acme is a construction company specializing in large-scale commercial and residential projects. They recently announced a new project via a press release. They have a strong online presence and a professional website. Key pain points are likely securing project-specific insurance and managing subcontractor liability."
-          }
-        ]
-        \`\`\`
-
-        **Your response must contain ONLY the JSON array.** No preamble, no explanation, no markdown outside of the JSON block.
-    `;
-    
-    // --- Gemini API Call ---
     try {
-        const payload = {
-            contents: [{ parts: [{ text: userPrompt }] }],
-            tools: [{ "google_search": {} }],
-            systemInstruction: {
-                parts: [{ text: systemPrompt }]
-            },
-            generationConfig: {
-                responseMimeType: "application/json",
-            },
-        };
-        const apiKey = ""; 
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-
-        const response = await fetch(apiUrl, {
+        const response = await fetch(backendEndpointUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ prompt: userPrompt, userId: userId }),
         });
 
         if (!response.ok) {
-            throw new Error(`API call failed with status: ${response.status}`);
+            throw new Error(`Endpoint call failed with status: ${response.status}`);
         }
 
         const result = await response.json();
-        const jsonString = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (!jsonString) {
-            throw new Error("API response was empty or malformed.");
-        }
+        console.log("Backend response:", result);
 
-        const leads = JSON.parse(jsonString);
-
-        // Add leads to Firestore
-        await saveLeadsToFirestore(leads);
-
-        statusText.textContent = 'Leads generated successfully!';
-        
+        statusText.textContent = 'Agent pipeline triggered. New leads will appear shortly!';
     } catch (error) {
         statusText.textContent = 'Error: ' + error.message;
-        console.error('Lead generation error:', error);
+        console.error('API call error:', error);
     } finally {
         generateButton.disabled = false;
     }
@@ -151,12 +91,8 @@ async function generateLeads() {
 
 // --- Firestore Operations ---
 async function saveLeadsToFirestore(leads) {
-    if (!db) {
+    if (!db || !userId) {
         console.error("Firestore is not initialized.");
-        return;
-    }
-    if (!userId) {
-        console.error("User ID is not available.");
         return;
     }
     const userLeadsCollection = collection(db, `artifacts/${appId}/users/${userId}/leads`);
@@ -189,12 +125,10 @@ function renderLeads(leads) {
                 <p class="text-sm text-gray-600">${lead.researchNotes}</p>
             </div>
         `;
-        // Add event listener for the copy button
         leadCard.querySelector('.copy-button').addEventListener('click', (event) => {
             const button = event.target;
             const content = button.closest('.lead-card').querySelector('pre').textContent;
             
-            // Fallback for clipboard functionality
             const tempInput = document.createElement('textarea');
             tempInput.value = content;
             document.body.appendChild(tempInput);
@@ -221,7 +155,6 @@ function renderLeads(leads) {
 // --- Real-time Firestore Listener ---
 const setupFirestoreListener = () => {
     if (!db || !userId) {
-        // Log an error if Firebase is not yet initialized
         console.error("Firestore not initialized. Cannot set up listener.");
         return;
     }
