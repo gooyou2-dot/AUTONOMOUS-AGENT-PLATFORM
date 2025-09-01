@@ -4,13 +4,13 @@ import { getFirestore, addDoc, onSnapshot, collection, query, serverTimestamp } 
 
 // Your actual Firebase configuration from Firebase Console
 const firebaseConfig = {
-  apiKey: "AIzaSyC8GGN2dLImqUPXIIYoYItg7WJSVIwgow",
+  apiKey: "AIzaSyAfJCGvSV0QckOWdf2Iglu0Gc7EXiKKEp4",
   authDomain: "autonomous-agent-platform.firebaseapp.com",
   projectId: "autonomous-agent-platform",
   storageBucket: "autonomous-agent-platform.firebasestorage.app",
   messagingSenderId: "629997046233",
   appId: "1:629997046233:web:ab40772d6fc77adcccf1c8",
-  measurementId: "G-BGZV9Z7M70"
+  measurementId: "G-06ZV9Z7M70"
 };
 
 // FIXED: Use a simple app ID
