@@ -4,7 +4,7 @@ import { getFirestore, addDoc, onSnapshot, collection, query, serverTimestamp } 
 
 // Your actual Firebase configuration from Firebase Console
 const firebaseConfig = {
-  apiKey: "AIzaSyAfJCGvSVOQckOWdf2IgluOGc7EXiKKEp4",
+  apiKey: "AIzaSyC8GGN2dLImqUPXIIYoYItg7WJSVIwgow",
   authDomain: "autonomous-agent-platform.firebaseapp.com",
   projectId: "autonomous-agent-platform",
   storageBucket: "autonomous-agent-platform.firebasestorage.app",
